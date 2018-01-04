@@ -1,0 +1,9 @@
+{
+	"@metadata": {
+		"authors": [
+			"Ken Hilton"
+		]
+	},
+	"piwo-desc": "Description of the extension.",
+	"piwo-purge-reminder": "Remind users to purge pages that include scripts after saving an edit to a script."
+}
