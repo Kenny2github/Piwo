@@ -52,7 +52,10 @@ class Piwo {
 	  if ($exitCode==0) {
       $pyExecResult=$output;
     } else {
-		  $pyExecResult="output= ".$output."error=".$error." exitCode=".$exitCode;  }
+			$pyExecResult="[[Gram:$name]] failed exitCode=".$exitCode;
+	 		if ($output) $pyExecResult.="<pre>".$output."</pre>";
+       $pyExecResult.="<pre style='color:red'>".$error."</pre>";  
+		}
 		return $pyExecResult; 
 	}
 
