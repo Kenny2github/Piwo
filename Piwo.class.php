@@ -36,7 +36,10 @@ class Piwo {
 			$i = escapeshellarg( $frame->expand( $i ) );
 		}
 		unset($i);
-    $result = Shell::command( 'python3' )
+		$python="python3";
+		# use shell framework for call
+		# https://www.mediawiki.org/wiki/Manual:Shell_framework
+    $result = Shell::command($python,$pyCode )
     	->environment( [ 'MEDIAWIKI' => 'to be used later' ] )
     	->limits( [ 'time' => 300 ] )
     	->execute();
@@ -46,7 +49,10 @@ class Piwo {
 		#unlink($pyCode);
 		#unlink($pyError);
 		#$output="<source lang='python'>".$content."</source>";
-		$pyExecResult="output= ".$output."error=".$error." exitCode=".$exitCode;
+	  if ($exitCode==0) {
+      $pyExecResult=$output;
+    } else {
+		  $pyExecResult="output= ".$output."error=".$error." exitCode=".$exitCode;  }
 		return $pyExecResult; 
 	}
 
