@@ -1,4 +1,7 @@
 <?php
+
+use MediaWiki\Shell\Shell;
+use MediaWiki\Logger\LoggerFactory;
 define( 'CONTENT_MODEL_PIWO', 'Piwo' );
 class Piwo {
 	// Register render callbacks with the parser
@@ -7,29 +10,44 @@ class Piwo {
 		//the "python" magic word with execPy()
 		$parser->setFunctionHook( 'piwo', 'Piwo::execPy', Parser::SFH_OBJECT_ARGS );
 	}
+
+  /**
+   * write the given content to the given filePath
+   */
+  public static function writeStringToFile($filePath,$content) {
+		$f = fopen($filePath, "w");
+		fwrite( $f, $content );
+		fclose( $f );
+		unset($f);
+  }
+
 	// Render the output of {{#python:gram}}.
 	public static function execPy( $parser, $frame, $params ) {
 		//The inputs should contain a gram name and sys.argv
 		//The output should also be wikitext.
 		$page = WikiPage::factory( Title::newFromText( 'Gram:' . $frame->expand( $params[0] ) ) );
 		$name = $frame->expand( $params[0] );
+		$base="/tmp/";
+	  $pyCode= $base . $name . ".py";
+    $pyError= $base . $name . ".error";
 		$content = $page->getContent()->getNativeData() . '';
-		$content = "import sys\nsys.path.append('" . getcwd() . "/extensions/Piwo')" . (((strpos($content, "from mw import") or strpos($content, "import mw")) === false) ? "\nimport mw" : "") . "\nsys.stderr = open('/tmp/" . $name . ".error', 'w')\ndel sys\n" . $content . "\nimport sys\nsys.stderr.close()\ndel sys";
-		$f = fopen("/tmp/" . $name . ".py", "w");
-		fwrite( $f, $content );
-		fclose( $f );
-		unset($f);
+    self::writeStringToFile($pyCode,$content);
 		foreach ($params as &$i) {
 			$i = escapeshellarg( $frame->expand( $i ) );
 		}
 		unset($i);
-		$output = shell_exec("python3 /tmp/" . $name . '.py ' . implode(' ', array_slice($params, 1)));
-		if ($output === null) { //$output = file_get_contents("/var/tmp/test");
-			$output = '<pre class="error">' . htmlspecialchars( file_get_contents("/tmp/" . $name . ".error") ) . '</pre>';
-		}
-		unlink("/tmp/" . $name . ".py");
-		unlink("/tmp/" . $name . ".error");
-		return $output;
+    $result = Shell::command( 'python3' )
+    	->environment( [ 'MEDIAWIKI' => 'to be used later' ] )
+    	->limits( [ 'time' => 300 ] )
+    	->execute();
+    $exitCode = $result->getExitCode();
+    $output = $result->getStdout();
+    $error = $result->getStderr();
+		#unlink($pyCode);
+		#unlink($pyError);
+		#$output="<source lang='python'>".$content."</source>";
+		$pyExecResult="output= ".$output."error=".$error." exitCode=".$exitCode;
+		return $pyExecResult; 
 	}
 
 	public static function contentHandlerDefaultModelFor( Title $title, &$model ) {
