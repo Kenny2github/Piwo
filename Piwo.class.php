@@ -32,14 +32,15 @@ class Piwo {
     $pyError= $base . $name . ".error";
 		$content = $page->getContent()->getNativeData() . '';
     self::writeStringToFile($pyCode,$content);
-		foreach ($params as &$i) {
-			$i = escapeshellarg( $frame->expand( $i ) );
-		}
-		unset($i);
 		$python="python3";
+		$cmd=[$python,$pyCode];
+		foreach ($params as &$i) {
+			 if ($i>0) $cmd[] = escapeshellarg( $frame->expand( $i ) );
+		}
+		unset ($i);
 		# use shell framework for call
 		# https://www.mediawiki.org/wiki/Manual:Shell_framework
-    $result = Shell::command($python,$pyCode )
+    $result = Shell::command($cmd )
     	->environment( [ 'MEDIAWIKI' => 'to be used later' ] )
     	->limits( [ 'time' => 300 ] )
     	->execute();
@@ -52,7 +53,8 @@ class Piwo {
 	  if ($exitCode==0) {
       $pyExecResult=$output;
     } else {
-			$pyExecResult="[[Gram:$name]] failed exitCode=".$exitCode;
+			$cmdstring=implode(" ",$cmd);
+			$pyExecResult="[[Gram:$name]] $cmdstring failed exitCode=".$exitCode;
 	 		if ($output) $pyExecResult.="<pre>".$output."</pre>";
        $pyExecResult.="<pre style='color:red'>".$error."</pre>";  
 		}
