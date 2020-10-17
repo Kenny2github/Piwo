@@ -3,6 +3,10 @@
 use MediaWiki\Shell\Shell;
 use MediaWiki\Logger\LoggerFactory;
 define( 'CONTENT_MODEL_PIWO', 'Piwo' );
+
+/**
+ * Python execution for MediaWiki
+ */
 class Piwo {
 	// Register render callbacks with the parser
 	public static function onParserSetup( &$parser ) {
@@ -38,7 +42,8 @@ class Piwo {
 		$page = WikiPage::factory( Title::newFromText( 'Gram:' . $frame->expand( $params[0] ) ) );
 		$name = $frame->expand( $params[0] );
 		$base="/tmp/";
-	  $pyCode= $base . $name . ".py";
+	  $pyCode = $base . $name . ".py";
+    $pyWiki = $base . $name . ".wiki";
     $pyError= $base . $name . ".error";
     $pageContent = $page->getContent();
 	  if (is_null($pageContent)) {
@@ -64,8 +69,13 @@ class Piwo {
       $exitCode = $result->getExitCode();
     	$output = $result->getStdout();
     	$error = $result->getStderr();
-			#unlink($pyCode);
-			#unlink($pyError);
+      $debug=True;
+			if ($debug)  {
+      	self::writeStringToFile($pyWiki,$output);
+      	self::writeStringToFile($pyError,$error);
+			} else {
+         unlink($pyCode);
+      }
 	  	if ($exitCode==0) {
         $pyExecResult=$output;
       } else {
@@ -86,7 +96,7 @@ class Piwo {
 	}
 }
 
-class PiwoContent extends TextContent {
+class PiwoContent extends WikitextContent {
 	function __construct( $text ){
 		parent::__construct( $text, CONTENT_MODEL_PIWO );
 	}
@@ -112,16 +122,25 @@ class PiwoContent extends TextContent {
 }
 
 class PiwoContentHandler extends CodeContentHandler {
+  /**
+   * construct me for my content model
+   */
 	public function __construct(
-		$modelId = CONTENT_MODEL_PIWO, $formats = [ CONTENT_FORMAT_TEXT ]
+		$modelId = CONTENT_MODEL_PIWO, $formats = [ CONTENT_FORMAT_WIKITEXT ]
 	) {
 		parent::__construct( $modelId, $formats );
 	}
 
+  /**
+   * return my content class
+   */
 	protected function getContentClass() {
 		return 'PiwoContent';
 	}
 
+  /**
+   * limit the name space for pages using this content model
+   */
 	public function canBeUsedOn( Title $title ) {
 		if ( $title->getNamespace() !== NS_GRAM ) {
 			return false;
