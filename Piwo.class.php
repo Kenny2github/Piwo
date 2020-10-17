@@ -21,6 +21,16 @@ class Piwo {
 		unset($f);
   }
 
+  /**
+   * get a proper error message
+   */ 
+  public static function getError($msg,$output,$error) {
+    $result=$msg;
+	 	if ($output) $result.="<pre>".$output."</pre>";
+    $result.="<pre style='color:red'>".$error."</pre>";  
+    return $result;
+  }
+
 	// Render the output of {{#python:gram}}.
 	public static function execPy( $parser, $frame, $params ) {
 		//The inputs should contain a gram name and sys.argv
@@ -30,34 +40,40 @@ class Piwo {
 		$base="/tmp/";
 	  $pyCode= $base . $name . ".py";
     $pyError= $base . $name . ".error";
-		$content = $page->getContent()->getNativeData() . '';
-    self::writeStringToFile($pyCode,$content);
-		$python="python3";
-		$cmd=[$python,$pyCode];
-		foreach ($params as &$i) {
-			 if ($i>0) $cmd[] = escapeshellarg( $frame->expand( $i ) );
-		}
-		unset ($i);
-		# use shell framework for call
-		# https://www.mediawiki.org/wiki/Manual:Shell_framework
-    $result = Shell::command($cmd )
-    	->environment( [ 'MEDIAWIKI' => 'to be used later' ] )
-    	->limits( [ 'time' => 300 ] )
-    	->execute();
-    $exitCode = $result->getExitCode();
-    $output = $result->getStdout();
-    $error = $result->getStderr();
-		#unlink($pyCode);
-		#unlink($pyError);
-		#$output="<source lang='python'>".$content."</source>";
-	  if ($exitCode==0) {
-      $pyExecResult=$output;
-    } else {
-			$cmdstring=implode(" ",$cmd);
-			$pyExecResult="[[Gram:$name]] $cmdstring failed exitCode=".$exitCode;
-	 		if ($output) $pyExecResult.="<pre>".$output."</pre>";
-       $pyExecResult.="<pre style='color:red'>".$error."</pre>";  
-		}
+    $pageContent = $page->getContent();
+	  if (is_null($pageContent)) {
+			$msg="[[Gram:$name]] failed";
+      $output="";
+      $error="The page does not exist!";
+			$pyExecResult=self::getError($msg,$output,$error);
+    } else { 
+		  $content = $pageContent->getNativeData() . '';
+    	self::writeStringToFile($pyCode,$content);
+		  $python="python3";
+		  $cmd=[$python,$pyCode];
+		  foreach ($params as &$i) {
+		  	 if ($i>0) $cmd[] =  $frame->expand( $i );
+		  }
+		  unset ($i);
+		  # use shell framework for call
+		  # https://www.mediawiki.org/wiki/Manual:Shell_framework
+      $result = Shell::command($cmd )
+       	->environment( [ 'MEDIAWIKI' => 'to be used later' ] )
+    	  ->limits( [ 'time' => 300 ] )
+    	  ->execute();
+      $exitCode = $result->getExitCode();
+    	$output = $result->getStdout();
+    	$error = $result->getStderr();
+			#unlink($pyCode);
+			#unlink($pyError);
+	  	if ($exitCode==0) {
+        $pyExecResult=$output;
+      } else {
+		   	$cmdstring=implode(" ",$cmd);
+			  $msg="[[Gram:$name]] $cmdstring failed exitCode=".$exitCode;
+			  $pyExecResult=self::getError($msg,$output,$error);
+		  }
+    }
 		return $pyExecResult; 
 	}
 
