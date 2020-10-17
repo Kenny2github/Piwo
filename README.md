@@ -1,3 +1,5 @@
+https://www.mediawiki.org/wiki/Extension:Piwo
+
 Piwo - Python In, Wikitext Out
 
 Compiles and executes Python code stored in wiki pages.
