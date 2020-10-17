@@ -1,8 +1,9 @@
 {
 	"name": "Piwo",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"author": [
-		"Ken Hilton"
+		"Ken Hilton",
+    "[http://www.bitplan.com/index.php/Wolfgang_Fahl Wolfgang Fahl]"
 	],
 	"url": "https://github.com/Kenny2github/Piwo",
 	"descriptionmsg": "piwo-desc",
