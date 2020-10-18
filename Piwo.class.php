@@ -3,9 +3,14 @@ define( 'CONTENT_MODEL_PIWO', 'Piwo' );
 class Piwo {
 	// Register render callbacks with the parser
 	public static function onParserSetup( &$parser ) {
+		global $wgSyntaxHighlightModels;
 		//Create the function hook associating
 		//the "python" magic word with execPy()
 		$parser->setFunctionHook( 'piwo', 'Piwo::execPy', Parser::SFH_OBJECT_ARGS );
+		// Register the python syntax highlighter for Gram pages if SH is registered
+		if (isset($wgSyntaxHighlightModels)) {
+			$wgSyntaxHighlightModels[CONTENT_MODEL_PIWO] = 'python3';
+		}
 	}
 	// Render the output of {{#python:gram}}.
 	public static function execPy( $parser, $frame, $params ) {
