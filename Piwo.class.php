@@ -24,9 +24,10 @@ class Piwo {
 		$name = $frame->expand( $params[0] );
 		$filename = "/tmp/" . $name . ".py";
 		$wd = __DIR__;
-		$content = $page->getContent()->getNativeData() . '';
+		$content = $page->getContent();
+		if ($content) $content = $content->getNativeData() . '';
 		$content = $content ?: <<<EOS
-raise FileNotFoundError('No Gram named ' + mw.GRAM_NAME + ' exists or it is empty')
+raise FileNotFoundError('No Gram named ' + repr(mw.GRAM_NAME) + ' exists or it is empty')
 EOS;
 		if (strpos($content, "from mw import") || strpos($content, "import mw")) {}
 		else $content = <<<EOS
@@ -40,8 +41,8 @@ $content
 EOS;
 		file_put_contents($filename, $content);
 		$cmdargs = ["python3", $filename];
-		foreach ($params as $par) {
-			$cmdargs[] = $frame->expand( $par );
+		foreach ($params as $i => $par) {
+			if ($i > 0) $cmdargs[] = $frame->expand( $par );
 		}
 		$result = Shell::command($cmdargs)
 			->environment( [
@@ -56,7 +57,6 @@ EOS;
 		if ($exitCode == 0) {
 			$output = $stdout;
 		} else {
-			$args = implode
 			$output = <<<EOS
 <p class="error">[[Gram:$name]] exited with code $exitCode:</p>
 <pre>$stdout</pre>
