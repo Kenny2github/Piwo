@@ -2,18 +2,14 @@
 define( 'CONTENT_MODEL_PIWO', 'Piwo' );
 
 use MediaWiki\Shell\Shell;
+use MediaWiki\MediaWikiServices;
 
 class Piwo {
 	// Register render callbacks with the parser
 	public static function onParserSetup( &$parser ) {
-		global $wgSyntaxHighlightModels;
 		//Create the function hook associating
 		//the "python" magic word with execPy()
 		$parser->setFunctionHook( 'piwo', 'Piwo::execPy', Parser::SFH_OBJECT_ARGS );
-		// Register the python syntax highlighter for Gram pages if SH is registered
-		if (isset($wgSyntaxHighlightModels)) {
-			$wgSyntaxHighlightModels[CONTENT_MODEL_PIWO] = 'python3';
-		}
 	}
 
 	// Render the output of {{#python:gram}}.
@@ -81,22 +77,44 @@ class PiwoContent extends TextContent {
 	}
 
 	protected function fillParserOutput(
-		Title $title, $revId, ParserOptions $options, $generateHtml, ParserOutput &$output
+		Title $title, $revId, ParserOptions $options,
+		$generateHtml, ParserOutput &$output
 	) {
-		$text = $this->getNativeData();
-		$output->setText( self::getPOText( $output ) .
-			"<p>" . wfMessage( 'piwo-purge-reminder' )->text() . "</p>\n" .
-			"<pre class='mw-code mw-script' dir='ltr'>\n" .
-			htmlspecialchars( $text ) .
-			"\n</pre>\n"
+		if (!$generateHtml) {
+			$output->setText('');
+			return;
+		}
+		$cache = MediaWikiServices::getInstance()->getMainWANObjectCache();
+		$key = $cache->makeKey('piwo-gram', $title->getArticleID(), $revId);
+		$output = $cache->getWithSetCallback(
+			$key, $cache::TTL_INDEFINITE,
+			function ($oldValue, &$ttl, array &$setOpts) use ($title, $options, $revId) {
+				$out = MediaWikiServices::getInstance()->getParser()
+					->parse( $this->getWikiText(), $title, $options, true, true, $revId );
+				$out->clearWrapperDivClass();
+				return $out;
+			}
 		);
-		return $output;
 	}
 
-	private static function getPOText( ParserOutput $po ) {
-		return is_callable( [ $po, 'getRawText' ] )
-			? $po->getRawText()
-			: $po->getText();
+	public function getWikiText() {
+		global $wgSyntaxHighlightModels;
+		$text = $this->getText();
+		if (isset($wgSyntaxHighlightModels)) { // SyntaxHighlight is registered
+			$content = <<<EOS
+<syntaxhighlight lang="python3">
+$text
+</syntaxhighlight>
+EOS;
+		} else {
+			$content = <<<EOS
+<pre class="mw-code mw-script" dir="ltr">';
+$text
+</pre>
+EOS;
+		}
+		$content = "<p>" . wfMessage( 'piwo-purge-reminder' )->text() . "</p>\n" . $content;
+		return $content;
 	}
 }
 
