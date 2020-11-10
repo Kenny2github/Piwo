@@ -12,6 +12,30 @@ class Piwo {
 		$parser->setFunctionHook( 'piwo', 'Piwo::execPy', Parser::SFH_OBJECT_ARGS );
 	}
 
+	/**
+   * execute python code
+   */
+	public static function execPython($name,$cmdargs) {
+		putenv('MW_PIWO='.__DIR__);
+		putenv('MW_ROOT='.dirname(dirname(__DIR__)));
+    putenv('MW_GRAM_NAME='.$name);
+    $shellcmd="";
+    $first=True;
+    foreach ($cmdargs as $arg) {
+			if ($first) {
+				$shellcmd=$arg;
+  			$first=False;
+			} else {
+				$shellcmd.=' '.escapeshellarg($arg);
+			}
+    }
+    $shellcmd.=" 2>&1";
+    #$output=$shellcmd;
+    $output=shell_exec($shellcmd);
+    return $output;
+  }
+
+
   /**
    * execute python code
    */
@@ -65,7 +89,7 @@ EOS;
 import sys
 sys.path.append('$wd')
 $content
-EOS; 
+EOS;
 		}
 	
 		file_put_contents($filename, $content);
@@ -73,7 +97,9 @@ EOS;
 		foreach ($params as $i => $par) {
 			if ($i > 0) $cmdargs[] = $frame->expand( $par );
 		}
-		$output = self::execJailedPython($name,$cmdargs);
+		# we need some condition here to decide ...
+		$output = self::execPython($name,$cmdargs);
+		#$output = self::execJailedPython($name,$cmdargs);
 
 		return [ $output, 'noparse' => false ];
 	}
