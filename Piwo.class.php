@@ -1,5 +1,5 @@
 <?php
-define( 'CONTENT_MODEL_PIWO', 'Piwo' );
+define('CONTENT_MODEL_PIWO', 'Piwo');
 
 use MediaWiki\Shell\Shell;
 use MediaWiki\MediaWikiServices;
@@ -11,6 +11,58 @@ class Piwo {
 		//the "python" magic word with execPy()
 		$parser->setFunctionHook( 'piwo', 'Piwo::execPy', Parser::SFH_OBJECT_ARGS );
 	}
+
+	/**
+   * execute python code
+   */
+	public static function execPython($name,$cmdargs) {
+		putenv('MW_PIWO='.__DIR__);
+		putenv('MW_ROOT='.dirname(dirname(__DIR__)));
+    putenv('MW_GRAM_NAME='.$name);
+    $shellcmd="";
+    $first=True;
+    foreach ($cmdargs as $arg) {
+			if ($first) {
+				$shellcmd=$arg;
+  			$first=False;
+			} else {
+				$shellcmd.=' '.escapeshellarg($arg);
+			}
+    }
+    $shellcmd.=" 2>&1";
+    #$output=$shellcmd;
+    $output=shell_exec($shellcmd);
+    return $output;
+  }
+
+
+  /**
+   * execute python code
+   */
+	public static function execJailedPython($name,$cmdargs) {
+		$result = Shell::command($cmdargs)
+			->environment( [
+				'MW_PIWO' => __DIR__,
+				'MW_ROOT' => dirname(dirname(__DIR__)),
+				'MW_GRAM_NAME' => $name
+			] )
+			->limits( [ 'time' => 300 ] )
+			->execute();
+		$exitCode = $result->getExitCode();
+		$stdout = $result->getStdout();
+		$stderr = $result->getStderr();
+		if ($exitCode == 0) {
+			$output = $stdout;
+		} else {
+			$output = <<<EOS
+<p class="error">[[Gram:$name]] exited with code $exitCode:</p>
+<pre>$stdout</pre>
+<pre class="error">$stderr</pre>
+EOS;
+		}
+		return $output;
+	}
+
 
 	// Render the output of {{#python:gram}}.
 	public static function execPy( $parser, $frame, $params ) {
@@ -30,35 +82,25 @@ EOS;
 import mw
 $content
 EOS;
-		$content = <<<EOS
+		# check magic content
+        if (strpos($content, "PIWO: do not touch")) {}
+		else {
+			$content = <<<EOS
 import sys
 sys.path.append('$wd')
 $content
 EOS;
+		}
+	
 		file_put_contents($filename, $content);
 		$cmdargs = ["python3", $filename];
 		foreach ($params as $i => $par) {
 			if ($i > 0) $cmdargs[] = $frame->expand( $par );
 		}
-		$result = Shell::command($cmdargs)
-			->environment( [
-				'MW_ROOT' => dirname(dirname(__DIR__)),
-				'MW_GRAM_NAME' => $name
-			] )
-			->limits( [ 'time' => 300 ] )
-			->execute();
-		$exitCode = $result->getExitCode();
-		$stdout = $result->getStdout();
-		$stderr = $result->getStderr();
-		if ($exitCode == 0) {
-			$output = $stdout;
-		} else {
-			$output = <<<EOS
-<p class="error">[[Gram:$name]] exited with code $exitCode:</p>
-<pre>$stdout</pre>
-<pre class="error">$stderr</pre>
-EOS;
-		}
+		# we need some condition here to decide ...
+		$output = self::execPython($name,$cmdargs);
+		#$output = self::execJailedPython($name,$cmdargs);
+
 		return [ $output, 'noparse' => false ];
 	}
 
